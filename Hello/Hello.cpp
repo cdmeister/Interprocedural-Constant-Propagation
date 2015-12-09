@@ -23,7 +23,6 @@
 #include <vector>
 #include <map>
 #include <queue>
-#include <deque>
 
 
 
@@ -48,20 +47,22 @@ namespace {
 
 
       // Print Consumer Sets
-      for(auto &formalP : consumerSet) {
-        errs() << "The consumers of " << *(formalP.first) << "\n";
-        for(auto &supp : formalP.second){
-          errs() << *supp << '\n';
-        }
-      }
-      return false;
-    
+      // for(auto &formalP : consumerSet) {
+      //   errs() << "The consumers of " << *(formalP.first) << "\n";
+      //   for(auto &supp : formalP.second){
+      //     errs() << *supp << '\n';
+      //   }
+      // }
       ipConstantProp(M);
+
+
+      return false;
     }
 
     void ipConstantProp(Module &M) {
-      std::deque<llvm:Argument*> worklist;
+      std::queue<llvm::Argument*> worklist;
 
+      // Initialize worklist queue with every formal param of every function
       for(Module::iterator F=M.begin(), E=M.end(); F != E ; ++F){
         Function::arg_iterator formal_param = F->arg_begin();
         Function::arg_iterator FE = F->arg_end();
@@ -71,8 +72,86 @@ namespace {
         }
       }
 
-      // while(!worklist.empty()) {
-      // }
+
+      llvm::Argument *current_formal_param;
+      while(!worklist.empty()) {
+        current_formal_param = worklist.front();
+        worklist.pop();
+
+        if (isFormalParamConstant(current_formal_param)) {
+          print "I am a constant formal param: " << *current_formal_param << '\n';
+        }
+
+      }
+    }
+    
+    /// PropagateConstantsIntoArguments - Look at all uses of the specified
+    /// function.  If all uses are direct call sites, and all pass a particular
+    /// constant in for an argument, propagate that constant in as the argument.
+    ///
+    /// Check to see if formal_param is constant at every callsite
+    bool isFormalParamConstant(llvm:Argument* formal_param) {
+      llvm::Function *F = formal_param.getParent();
+      llvm::Instruction *formalParamInst = dyn_cast<Instruction*>(formal_param);
+      // For each argument, keep track of its constant value and whether it is a
+      // constant or not.  The bool is driven to true when found to be non-constant.
+
+      std::pair<Constant*, bool> argConst;
+
+      for (Use &U : F.uses()) {
+        User *UR = U.getUser();
+        // Ignore blockaddress uses.
+        if (isa<BlockAddress>(UR)) continue;
+        
+        // Used by a non-instruction, or not the callee of a function, do not
+        // transform.
+        if (!isa<CallInst>(UR) && !isa<InvokeInst>(UR))
+          return false;
+        
+        CallSite CS(cast<Instruction>(UR));
+        if (!CS.isCallee(&U))
+          return false;
+
+        // Check out all of the potentially constant arguments.  Note that we don't
+        // inspect varargs here.
+        CallSite::arg_iterator AI = CS.arg_begin();
+        Function::arg_iterator Arg = F.arg_begin();
+        for (unsigned i = 0, e = ArgumentConstants.size(); i != e;
+             ++i, ++AI, ++Arg) {
+          // Looking for the actual param that corresponds to the formal param
+          if(Instruction *argInst = dyn_cast<Instruction*>(AI)) {
+            if(argInst.isIdenticalTo(formalParamInst)) {
+               // If this argument is known non-constant, ignore it.
+              if (argConst.second)
+                continue;
+              
+              Constant *C = dyn_cast<Constant>();
+              if (C && argConst.first == nullptr) {
+                argConst.first = C;   // First constant seen.
+              } else if (C && argConst.first == C) {
+                // Still the constant value we think it is.
+              } else if (*AI == &*Arg) {
+                // Ignore recursive calls passing argument down.
+              } else {
+                // Argument is constant
+                argConst.second = true;
+              }
+            }
+          } 
+        }
+      }
+
+      // If we got to this point, we might have a constant!
+      // Do we have a constant argument?
+      if (argConst.second || formal_param->use_empty() ||
+          formal_param->hasInAllocaAttr() || (formal_param->hasByValAttr() && !F.onlyReadsMemory())) {
+        return false
+      }
+
+      Value *V = argConst.first;
+      if (!V) V = UndefValue::get(formal_param->getType());
+      formal_param->replaceAllUsesWith(V);
+      return true;
     }
 
     bool ifInstructionSeen(llvm::Instruction * inst, std::vector<llvm::Instruction *> seen_list){
