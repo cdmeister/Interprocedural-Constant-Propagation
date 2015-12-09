@@ -82,10 +82,11 @@ namespace {
 
 
       llvm::Argument *current_formal_param;
-      bool isConstant;
+      bool isConstant = false;
       while(!worklist.empty()) {
         current_formal_param = worklist.front();
         worklist.pop();
+
         isConstant = isFormalParamConstant(current_formal_param);
         if (isConstant) {
           errs() << "I am a constant formal param: " << *current_formal_param << '\n';
@@ -133,30 +134,35 @@ namespace {
         
           argVal = dyn_cast<Value>(*AI);
           if(Instruction *argInst = dyn_cast<Instruction>(argVal)) {
-            if(argInst->isIdenticalTo(formalParamInst)) {
-               // If this argument is known non-constant, ignore it.
-              if (argConst.second)
-                continue;
-              
-              Constant *C = dyn_cast<Constant>(*AI);
-              if (C && argConst.first == nullptr) {
-                argConst.first = C;   // First constant seen.
-              } else if (C && argConst.first == C) {
-                // Still the constant value we think it is.
-              } else if (*AI == &*Arg) {
-                // Ignore recursive calls passing argument down.
-              } else {
-                // Argument is constant
-                argConst.second = true;
+            if (llvm::Instruction *formalParamInst = dyn_cast<Instruction>(formal_param)){
+              errs() << "HIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHI\n";
+              if(argInst->isIdenticalTo(formalParamInst)) {
+                 // If this argument is known non-constant, ignore it.
+                if (argConst.second)
+                  continue;
+                
+                Constant *C = dyn_cast<Constant>(*AI);
+                if (C && argConst.first == nullptr) {
+                  argConst.first = C;   // First constant seen.
+                  argConst.second = true;
+                } else if (C && argConst.first == C) {
+                  // Still the constant value we think it is.
+                } else if (*AI == &*Arg) {
+                  // Ignore recursive calls passing argument down.
+                } else {
+                  // Argument is constant
+                  argConst.second = false;
+                }
               }
             }
           } 
         }
       }
 
+
       // If we got to this point, we might have a constant!
       // Do we have a constant argument?
-      if (argConst.second || formal_param->use_empty() ||
+      if (!argConst.second || formal_param->use_empty() ||
           formal_param->hasInAllocaAttr() || (formal_param->hasByValAttr() && !F->onlyReadsMemory())) {
         return false;
       }
@@ -165,6 +171,7 @@ namespace {
       Value *V = argConst.first;
       if (!V) V = UndefValue::get(formal_param->getType());
       formal_param->replaceAllUsesWith(V);
+      
       return true;
     }
 
