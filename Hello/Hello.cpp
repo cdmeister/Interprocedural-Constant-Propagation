@@ -55,12 +55,12 @@ namespace {
 
 
       // Print Consumer Sets
-      // for(auto &formalP : consumerSet) {
-      //   errs() << "The consumers of " << *(formalP.first) << "\n";
-      //   for(auto &supp : formalP.second){
-      //     errs() << *supp << '\n';
-      //   }
-      // }
+      for(auto &formalP : consumerSet) {
+        errs() << "The consumers of " << *(formalP.first) << "\n";
+        for(auto &supp : formalP.second){
+          errs() << *supp << '\n';
+        }
+      }
       ipConstantProp(M);
 
 
@@ -90,8 +90,10 @@ namespace {
         isConstant = isFormalParamConstant(current_formal_param);
         if (isConstant) {
           errs() << "I am a constant formal param: " << *current_formal_param << '\n';
+          for(auto &consumerParam : consumerSet[current_formal_param]) {
+            worklist.push(consumerParam);
+          }
         }
-
       }
     }
     
@@ -102,12 +104,13 @@ namespace {
     /// Check to see if formal_param is constant at every callsite
     bool isFormalParamConstant(llvm::Argument* formal_param) {
       llvm::Function *F = formal_param->getParent();
-      llvm::Instruction *formalParamInst = dyn_cast<Instruction>(formal_param);
-      // For each argument, keep track of its constant value and whether it is a
-      // constant or not.  The bool is driven to true when found to be non-constant.
+      llvm::Instruction *formalParamInst;
+      int position = formal_param->getArgNo();
+      errs() << *F << '\n';
+      errs() << position << '\n';
 
       std::pair<Constant*, bool> argConst;
-
+      argConst.second = true;
       for (Use &U : F->uses()) {
         User *UR = U.getUser();
         // Ignore blockaddress uses.
@@ -127,35 +130,27 @@ namespace {
         CallSite::arg_iterator AI = CS.arg_begin();
         CallSite::arg_iterator AE = CS.arg_end();
         Function::arg_iterator Arg = F->arg_begin();
-        llvm::Value *argVal;
 
-        for (; AI != AE; ++AI, ++Arg) {
-          // Looking for the actual param that corresponds to the formal param
-        
-          argVal = dyn_cast<Value>(*AI);
-          if(Instruction *argInst = dyn_cast<Instruction>(argVal)) {
-            if (llvm::Instruction *formalParamInst = dyn_cast<Instruction>(formal_param)){
-              errs() << "HIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHIHI\n";
-              if(argInst->isIdenticalTo(formalParamInst)) {
-                 // If this argument is known non-constant, ignore it.
-                if (argConst.second)
-                  continue;
-                
-                Constant *C = dyn_cast<Constant>(*AI);
-                if (C && argConst.first == nullptr) {
-                  argConst.first = C;   // First constant seen.
-                  argConst.second = true;
-                } else if (C && argConst.first == C) {
-                  // Still the constant value we think it is.
-                } else if (*AI == &*Arg) {
-                  // Ignore recursive calls passing argument down.
-                } else {
-                  // Argument is constant
-                  argConst.second = false;
-                }
-              }
+        for (int i = 0; AI != AE; i++, ++AI, ++Arg) {
+          if(i == position) {
+             // If this argument is known non-constant, ignore it.
+            if (!argConst.second) {
+              continue;
             }
-          } 
+            
+            Constant *C = dyn_cast<Constant>(*AI);
+            if (C && argConst.first == nullptr) {
+              argConst.first = C;   // First constant seen.
+              argConst.second = true;
+            } else if (C && argConst.first == C) {
+              // Still the constant value we think it is.
+            } else if (*AI == &*Arg) {
+              // Ignore recursive calls passing argument down.
+            } else {
+              // Argument is not constant
+              argConst.second = false;
+            }
+          }
         }
       }
 
@@ -207,22 +202,30 @@ namespace {
             CallSite CS(Inst);
             errs() << "CallInst: " <<*Inst << "\n";
             Instruction * previous = dyn_cast<Instruction>(v);
-            errs() <<"Previous: " << *previous << '\n';
-                    
-            CallSite::arg_iterator AI = CS.arg_begin();
-            CallSite::arg_iterator AE = CS.arg_end();
-            Function * defined_func = CS.getCalledFunction();
-            Function::arg_iterator FI = defined_func->arg_begin();
+            if (previous) {
 
-            for(;AI != AE; ++AI, ++FI){
-              if(Instruction * cs_arg = dyn_cast<Instruction>(*AI)){
-                if(cs_arg->isIdenticalTo(previous)){
-                  errs() <<"Doing the check for prev and callsite arg" << '\n';
-                  consumerSet[formal_param].push_back(FI); 
+            }
+            else {
+              previous = Inst;
+            }
+
+            if (Instruction * previous = dyn_cast<Instruction>(v)) {
+              errs() <<"Previous: " << *previous << '\n';
+                      
+              CallSite::arg_iterator AI = CS.arg_begin();
+              CallSite::arg_iterator AE = CS.arg_end();
+              Function * defined_func = CS.getCalledFunction();
+              Function::arg_iterator FI = defined_func->arg_begin();
+
+              for(;AI != AE; ++AI, ++FI){
+                if(Instruction * cs_arg = dyn_cast<Instruction>(*AI)){
+                  if(cs_arg->isIdenticalTo(previous)){
+                    errs() <<"Doing the check for prev and callsite arg" << '\n';
+                    consumerSet[formal_param].push_back(FI); 
+                  }
                 }
               }
             }
-
             return;
           }
 
