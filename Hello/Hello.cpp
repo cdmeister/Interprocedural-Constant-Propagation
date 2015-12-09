@@ -25,6 +25,14 @@
 #include <queue>
 
 
+// #include "llvm/Transforms/IPO.h"
+// #include "llvm/ADT/SmallVector.h"
+// #include "llvm/ADT/Statistic.h"
+// #include "llvm/Analysis/ValueTracking.h"
+// #include "llvm/IR/CallSite.h"
+#include "llvm/IR/Constants.h"
+
+
 
 using namespace llvm;
 
@@ -74,12 +82,13 @@ namespace {
 
 
       llvm::Argument *current_formal_param;
+      bool isConstant;
       while(!worklist.empty()) {
         current_formal_param = worklist.front();
         worklist.pop();
-
-        if (isFormalParamConstant(current_formal_param)) {
-          print "I am a constant formal param: " << *current_formal_param << '\n';
+        isConstant = isFormalParamConstant(current_formal_param);
+        if (isConstant) {
+          errs() << "I am a constant formal param: " << *current_formal_param << '\n';
         }
 
       }
@@ -90,15 +99,15 @@ namespace {
     /// constant in for an argument, propagate that constant in as the argument.
     ///
     /// Check to see if formal_param is constant at every callsite
-    bool isFormalParamConstant(llvm:Argument* formal_param) {
-      llvm::Function *F = formal_param.getParent();
-      llvm::Instruction *formalParamInst = dyn_cast<Instruction*>(formal_param);
+    bool isFormalParamConstant(llvm::Argument* formal_param) {
+      llvm::Function *F = formal_param->getParent();
+      llvm::Instruction *formalParamInst = dyn_cast<Instruction>(formal_param);
       // For each argument, keep track of its constant value and whether it is a
       // constant or not.  The bool is driven to true when found to be non-constant.
 
       std::pair<Constant*, bool> argConst;
 
-      for (Use &U : F.uses()) {
+      for (Use &U : F->uses()) {
         User *UR = U.getUser();
         // Ignore blockaddress uses.
         if (isa<BlockAddress>(UR)) continue;
@@ -115,17 +124,21 @@ namespace {
         // Check out all of the potentially constant arguments.  Note that we don't
         // inspect varargs here.
         CallSite::arg_iterator AI = CS.arg_begin();
-        Function::arg_iterator Arg = F.arg_begin();
-        for (unsigned i = 0, e = ArgumentConstants.size(); i != e;
-             ++i, ++AI, ++Arg) {
+        CallSite::arg_iterator AE = CS.arg_end();
+        Function::arg_iterator Arg = F->arg_begin();
+        llvm::Value *argVal;
+
+        for (; AI != AE; ++AI, ++Arg) {
           // Looking for the actual param that corresponds to the formal param
-          if(Instruction *argInst = dyn_cast<Instruction*>(AI)) {
-            if(argInst.isIdenticalTo(formalParamInst)) {
+        
+          argVal = dyn_cast<Value>(*AI);
+          if(Instruction *argInst = dyn_cast<Instruction>(argVal)) {
+            if(argInst->isIdenticalTo(formalParamInst)) {
                // If this argument is known non-constant, ignore it.
               if (argConst.second)
                 continue;
               
-              Constant *C = dyn_cast<Constant>();
+              Constant *C = dyn_cast<Constant>(*AI);
               if (C && argConst.first == nullptr) {
                 argConst.first = C;   // First constant seen.
               } else if (C && argConst.first == C) {
@@ -144,10 +157,11 @@ namespace {
       // If we got to this point, we might have a constant!
       // Do we have a constant argument?
       if (argConst.second || formal_param->use_empty() ||
-          formal_param->hasInAllocaAttr() || (formal_param->hasByValAttr() && !F.onlyReadsMemory())) {
-        return false
+          formal_param->hasInAllocaAttr() || (formal_param->hasByValAttr() && !F->onlyReadsMemory())) {
+        return false;
       }
 
+      // Yay! it's constant!
       Value *V = argConst.first;
       if (!V) V = UndefValue::get(formal_param->getType());
       formal_param->replaceAllUsesWith(V);
