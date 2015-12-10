@@ -209,7 +209,7 @@ namespace {
               previous = Inst;
             }
 
-            if (Instruction * previous = dyn_cast<Instruction>(v)) {
+            // if (Instruction * previous = dyn_cast<Instruction>(v)) {
               errs() <<"Previous: " << *previous << '\n';
                       
               CallSite::arg_iterator AI = CS.arg_begin();
@@ -218,14 +218,20 @@ namespace {
               Function::arg_iterator FI = defined_func->arg_begin();
 
               for(;AI != AE; ++AI, ++FI){
-                if(Instruction * cs_arg = dyn_cast<Instruction>(*AI)){
+                llvm::Value *arg_val = dyn_cast<llvm::Value>(AI);
+
+                if(llvm::Instruction * cs_arg = dyn_cast<llvm::Instruction>(*AI)){
+
                   if(cs_arg->isIdenticalTo(previous)){
                     errs() <<"Doing the check for prev and callsite arg" << '\n';
                     consumerSet[formal_param].push_back(FI); 
                   }
                 }
+                else {
+                  consumerSet[formal_param].push_back(FI); 
+                }
               }
-            }
+            // }
             return;
           }
 
