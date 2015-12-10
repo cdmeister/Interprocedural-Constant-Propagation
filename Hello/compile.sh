@@ -5,7 +5,7 @@ make
 #clang -emit-llvm -o test/test.bc -c test/583compress/src/compress.c
 #clang -emit-llvm -o test/test.bc -c test/583simple/src/simple.c
 
-clang -emit-llvm -o test/test.bc -c -O1 test/test.c
+clang -emit-llvm -o test/test.bc -c -O1 test/test1.c
 llc test/test.bc -o test/test.s
 g++ -o test/test test/test.s 
 ./test/test 

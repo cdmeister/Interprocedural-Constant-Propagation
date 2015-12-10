@@ -16,5 +16,6 @@ int main(void){
   int x=4;
   int y=5;
   int z=foo(x,y);
+  printf("!!!!!Value: %d\n",z);
   //int z=foo(5,8); 
 }

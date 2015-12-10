@@ -20,25 +20,25 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Argument.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Analysis/ConstantFolding.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/Instruction.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
+
+
 #include <vector>
 #include <map>
 #include <queue>
-
-
-// #include "llvm/Transforms/IPO.h"
-// #include "llvm/ADT/SmallVector.h"
-// #include "llvm/ADT/Statistic.h"
-// #include "llvm/Analysis/ValueTracking.h"
-// #include "llvm/IR/CallSite.h"
-#include "llvm/IR/Constants.h"
-
-
+#include <set>
 
 using namespace llvm;
 
 #define DEBUG_TYPE "hello"
 
 STATISTIC(HelloCounter, "Counts number of functions greeted");
+STATISTIC(NumInstKilled, "Number of instructions killed");
+
 
 namespace {
   // Hello - The first implementation, without getAnalysisUsage.
@@ -49,6 +49,14 @@ namespace {
     private:
      std::map <llvm::Argument*,std::vector<llvm::Argument*>> consumerSet;
     public:
+    
+
+    void getAnalysisUsage(AnalysisUsage &AU) const override {
+      AU.setPreservesCFG();
+      AU.addRequired<TargetLibraryInfoWrapperPass>();
+    }
+
+
     bool runOnModule(Module &M) override {
       ++HelloCounter;
       initConsumerSets(M); 
@@ -90,6 +98,7 @@ namespace {
         isConstant = isFormalParamConstant(current_formal_param);
         if (isConstant) {
           errs() << "I am a constant formal param: " << *current_formal_param << '\n';
+          ConstantPropagation(*(current_formal_param->getParent()));
           for(auto &consumerParam : consumerSet[current_formal_param]) {
             worklist.push(consumerParam);
           }
@@ -312,6 +321,45 @@ namespace {
         }
       }
     }
+    
+
+  bool ConstantPropagation(Function &F) {
+    // Initialize the worklist to all of the instructions ready to process...
+    std::set<Instruction*> WorkList;
+    for(inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+       WorkList.insert(&*i);
+    }
+    bool Changed = false;
+    const DataLayout &DL = F.getParent()->getDataLayout();
+    TargetLibraryInfo *TLI =
+      &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+
+    while (!WorkList.empty()) {
+      Instruction *I = *WorkList.begin();
+      WorkList.erase(WorkList.begin());    // Get an element from the worklist...
+
+      if (!I->use_empty())                 // Don't muck with dead instructions...
+        if (Constant *C = ConstantFoldInstruction(I, DL, TLI)) {
+         // Add all of the users of this instruction to the worklist, they might
+         // be constant propagatable now...
+         for (User *U : I->users())
+           WorkList.insert(cast<Instruction>(U));
+
+          // Replace all of the uses of a variable with uses of the constant.
+          I->replaceAllUsesWith(C);
+
+          // Remove the dead instruction.
+          WorkList.erase(I);
+          I->eraseFromParent();
+
+          // We made a change to the function...
+          Changed = true;
+          ++NumInstKilled;
+        }
+    }
+    return Changed;
+  }
+   
   };
 }
 
