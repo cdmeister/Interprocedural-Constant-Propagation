@@ -36,9 +36,9 @@ using namespace llvm;
 
 #define DEBUG_TYPE "hello"
 
-STATISTIC(HelloCounter, "Counts number of functions greeted");
 STATISTIC(NumInstKilled, "Number of instructions killed");
-
+STATISTIC(NumConstantsProp, "Number of constant propagated");
+STATISTIC(NumOfArgsPop, "Number of arguments pop off the worklist");
 
 namespace {
   // Hello - The first implementation, without getAnalysisUsage.
@@ -58,10 +58,7 @@ namespace {
 
 
     bool runOnModule(Module &M) override {
-      ++HelloCounter;
       initConsumerSets(M); 
-
-
       // Print Consumer Sets
       for(auto &formalP : consumerSet) {
         errs() << "The consumers of " << *(formalP.first) << "\n";
@@ -94,11 +91,12 @@ namespace {
       while(!worklist.empty()) {
         current_formal_param = worklist.front();
         worklist.pop();
-
+        ++NumOfArgsPop;
         isConstant = isFormalParamConstant(current_formal_param);
         if (isConstant) {
           errs() << "I am a constant formal param: " << *current_formal_param << '\n';
           ConstantPropagation(*(current_formal_param->getParent()));
+          ++NumConstantsProp;
           for(auto &consumerParam : consumerSet[current_formal_param]) {
             worklist.push(consumerParam);
           }
@@ -241,7 +239,8 @@ namespace {
                 }
               }
             // }
-            return;
+            //test2.c
+            //return;
           }
 
           else if(Inst->getOpcode() == Instruction::Ret){
@@ -373,7 +372,6 @@ namespace {
     Hello2() : FunctionPass(ID) {}
 
     bool runOnFunction(Function &F) override {
-      ++HelloCounter;
       errs() << "Hello: ";
       errs().write_escaped(F.getName()) << '\n';
       return false;
