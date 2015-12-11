@@ -6,17 +6,16 @@ int baz (int z){
 }
 
 int foo(int a, int b){
-  int f=baz(a);
+  int g=a+5;
+  int f=baz(g);
+  f=f+g;
   return f;
 }
 
 int main(void){
   int x=4;
   int y=5;
-  int z=0;
-  if(x==4){
-    z=foo(x,y);
-  }
- 
+  int z=foo(x,y);
   printf("!!!!!Value: %d\n",z);
+  //int z=foo(5,8); 
 }
