@@ -38,7 +38,7 @@ using namespace llvm;
 
 STATISTIC(NumInstKilled, "Number of instructions killed");
 STATISTIC(NumConstantsProp, "Number of constant propagated");
-STATISTIC(NumOfArgsPop, "Number of arguments pop off the worklist");
+STATISTIC(NumOfArgsPop, "Number of arguments anaylzed");
 
 namespace {
   // Hello - The first implementation, without getAnalysisUsage.
