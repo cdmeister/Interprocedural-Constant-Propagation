@@ -5,23 +5,21 @@ int baz (int z){
   return x;
 }
 
-int bar (int barx,int bary, int barz){
-  //int g=x+y+z;
-  int w=baz(barz);
-  return w;
+int bar (int barz){
+  return baz(barz);
 }
 
-int boo(int boox){
+int boo (int boox){
   return baz(boox);
 }
 
 int foo(int a, int b){
   int g=a+5;
-  int f=baz(g);
-  int r=boo(g);
-  int q = bar (a,b,g);
-  f=f+g+r;
-  return q+f;
+  int f=boo(g);
+  int j=bar(g);
+  int p=baz(g);
+  f=f+g+j+p;
+  return f;
 }
 
 int main(void){
