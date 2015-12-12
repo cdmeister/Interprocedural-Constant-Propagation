@@ -14,9 +14,7 @@ int main(void){
   int x=4;
   int y=5;
   int z=0;
-  if(x==4){
-    z=foo(x,y);
-  }
+  z=foo(x,y);
  
   printf("!!!!!Value: %d\n",z);
 }
