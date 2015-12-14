@@ -10007,9 +10007,13 @@ int main() {
   int i=0;
   long result1 =0;
   long result2 =0;
+  int a = 1;
+  int b = 2;
+  int c = 3;
+  int d = 4;
   for(;i<INT_MAX;++i){
-    result1 = massive_compute(1, 2, 3, 4);
-    result2 = (result1/1000) - massive_compute(1, 2, 3, 4);
+    result1 = massive_compute(a, b, c, d);
+    result2 = (result1/1000) - massive_compute(a, b, c, d);
   }
    printf("result1: %ld, result2: %ld", result1, result2);
     return 0;
