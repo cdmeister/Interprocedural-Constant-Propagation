@@ -61,9 +61,9 @@ namespace {
       initConsumerSets(M); 
       // Print Consumer Sets
       for(auto &formalP : consumerSet) {
-        errs() << "The consumers of " << *(formalP.first) << "\n";
+        //errs() << "The consumers of " << *(formalP.first) << "\n";
         for(auto &supp : formalP.second){
-          errs() << *supp << '\n';
+        //  errs() << *supp << '\n';
         }
       }
       ipConstantProp(M);
@@ -94,7 +94,7 @@ namespace {
         ++NumOfArgsPop;
         isConstant = isFormalParamConstant(current_formal_param);
         if (isConstant) {
-          errs() << "I am a constant formal param: " << *current_formal_param << '\n';
+          //errs() << "I am a constant formal param: " << *current_formal_param << '\n';
           ConstantPropagation(*(current_formal_param->getParent()));
           ++NumConstantsProp;
           for(auto &consumerParam : consumerSet[current_formal_param]) {
@@ -201,13 +201,13 @@ namespace {
 
       for( User * U : v->users()){
         if (Instruction *Inst = dyn_cast<Instruction>(U)) {
-            errs() <<"Lolz " << *Inst << "\n";
+            //errs() <<"Lolz " << *Inst << "\n";
 
           // The instruction is a call site, so look to find the actual param
           // that the relation exists on and add it to the formal params consumer set
           if (Inst->getOpcode() == Instruction::Call) {
             CallSite CS(Inst);
-            errs() << "CallInst: " <<*Inst << "\n";
+            //errs() << "CallInst: " <<*Inst << "\n";
             Instruction * previous = dyn_cast<Instruction>(v);
             if (previous) {
 
