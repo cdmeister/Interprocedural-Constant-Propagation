@@ -113,8 +113,8 @@ namespace {
       llvm::Function *F = formal_param->getParent();
       llvm::Instruction *formalParamInst;
       int position = formal_param->getArgNo();
-      errs() << *F << '\n';
-      errs() << position << '\n';
+      //errs() << *F << '\n';
+      //errs() << position << '\n';
 
       std::pair<Constant*, bool> argConst;
       argConst.second = true;
@@ -217,7 +217,7 @@ namespace {
             }
 
             // if (Instruction * previous = dyn_cast<Instruction>(v)) {
-              errs() <<"Previous: " << *previous << '\n';
+              //errs() <<"Previous: " << *previous << '\n';
                       
               CallSite::arg_iterator AI = CS.arg_begin();
               CallSite::arg_iterator AE = CS.arg_end();
@@ -230,7 +230,7 @@ namespace {
                 if(llvm::Instruction * cs_arg = dyn_cast<llvm::Instruction>(*AI)){
 
                   if(cs_arg->isIdenticalTo(previous)){
-                    errs() <<"Doing the check for prev and callsite arg" << '\n';
+                    //errs() <<"Doing the check for prev and callsite arg" << '\n';
                     consumerSet[formal_param].push_back(FI); 
                   }
                 }
@@ -244,7 +244,7 @@ namespace {
           }
 
           else if(Inst->getOpcode() == Instruction::Ret){
-             errs() << "Exiting\n";
+             //errs() << "Exiting\n";
             return;
           } 
 
@@ -286,13 +286,13 @@ namespace {
       
       for(Module::iterator F=M.begin(), E=M.end(); F != E ; ++F){
         
-        errs() << "Name of Function: " << F->getName() << '\n' << '\n';
+        //errs() << "Name of Function: " << F->getName() << '\n' << '\n';
         
         bool has_callInst = false;
         for (inst_iterator I = inst_begin(*F), E = inst_end(*F); I != E; ++I){ 
           if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
             has_callInst =true;
-            errs() << F->getName() << " has at least one call instruction" << '\n';
+            //errs() << F->getName() << " has at least one call instruction" << '\n';
           }
         }
 
@@ -301,12 +301,12 @@ namespace {
           Function::arg_iterator Foo_args_end = F->arg_end();
           for(; Foo_args_begin != Foo_args_end; ++Foo_args_begin){
             Value * v = dyn_cast<llvm::Value>(Foo_args_begin);
-            errs() << "Arg: " << *v<< '\n';
+            //errs() << "Arg: " << *v<< '\n';
             std::vector<llvm::Instruction*> seen_list;
             getConsumers(v,&(*F),Foo_args_begin,seen_list);   
             seen_list.clear();    
           }
-
+          /*
           // Print out function body if it contains a callsite
           for (inst_iterator I = inst_begin(*F), E = inst_end(*F); I != E; ++I){
             if (CallInst* callInst = dyn_cast<CallInst>(&*I)) {
@@ -316,7 +316,7 @@ namespace {
 
               errs() <<"Get Called Function: "<< *test << '\n';
             }
-          }
+          }*/
         }
       }
     }
